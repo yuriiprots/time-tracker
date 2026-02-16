@@ -4,12 +4,14 @@ A modern time tracking web application built with Next.js, TypeScript, Tailwind 
 
 ## Features
 
+- 🔐 **Authentication**: Secure email/password authentication with Supabase Auth
 - ⏱️ **Active Timer**: Start/Stop timer with task description and project selection
 - 📝 **Time Management**: View, edit, and delete time entries
 - 📊 **Project Management**: Create and manage projects with custom colors
 - 📈 **Reports**: View time summaries by day/week/month with CSV export
 - 🔄 **Offline Support**: Continue tracking time offline with automatic sync when back online
 - 💾 **Local Persistence**: Data persists in localStorage until synced with Supabase
+- 🔒 **Data Privacy**: Row Level Security ensures users only see their own data
 
 ## Tech Stack
 
@@ -84,14 +86,25 @@ time-tracker/
    - Go to your Supabase project dashboard
    - Navigate to SQL Editor
    - Copy and run the SQL from `supabase/migrations/0000_initial_schema.sql`
+   - Then run `supabase/migrations/0001_enable_rls.sql` to enable Row Level Security
 
-6. **Start the development server**:
+6. **Enable Email Authentication** (Supabase Dashboard):
+   - Navigate to Authentication → Providers
+   - Ensure "Email" provider is enabled
+   - Configure email templates if desired
+
+7. **Start the development server**:
    ```bash
    npm run dev
    ```
 
-7. **Open your browser**:
+8. **Open your browser**:
    Navigate to [http://localhost:3000](http://localhost:3000)
+   
+9. **Create your account**:
+   - You'll be redirected to the login page
+   - Click "Sign up" to create a new account
+   - Use your email and password to register
 
 ## Usage
 
@@ -158,7 +171,8 @@ npm start
 
 ## Future Enhancements
 
-- [ ] User authentication (Supabase Auth)
+- [x] User authentication (Supabase Auth)
+- [ ] Password reset functionality
 - [ ] Audit log for manual time edits
 - [ ] Advanced offline sync (conflict resolution)
 - [ ] Mobile app (React Native)

@@ -9,7 +9,10 @@ interface TimerState {
   entries: TimeEntry[];
   projects: Project[];
   unsyncedEntries: string[]; // IDs of entries not yet synced
+  unsyncedProjects: string[]; // IDs of projects not yet synced
   isOnline: boolean;
+  isSyncing: boolean; // Track active sync operations
+  userId: string | null; // Cached user ID for offline use
 
   // Timer actions
   startTimer: (description: string, projectId: string | null) => void;
@@ -27,7 +30,9 @@ interface TimerState {
   
   // Sync actions
   syncWithServer: () => Promise<void>;
+  syncProjects: () => Promise<void>;
   setOnlineStatus: (status: boolean) => void;
+  setUserId: (userId: string | null) => void;
   
   // Fetch actions
   fetchTodayEntries: () => Promise<void>;
@@ -42,7 +47,10 @@ export const useTimerStore = create<TimerState>()(
       entries: [],
       projects: [],
       unsyncedEntries: [],
+      unsyncedProjects: [],
       isOnline: true,
+      isSyncing: false,
+      userId: null,
 
       // Start timer
       startTimer: (description, projectId) => {
@@ -104,6 +112,14 @@ export const useTimerStore = create<TimerState>()(
           return;
         }
 
+        // Get user ID from cache (works offline)
+        const { userId } = get();
+        if (!userId) {
+          console.error("No user ID found. Please log in.");
+          set({ activeTimer: null });
+          return;
+        }
+
         // Check if there's an existing entry today with the same description and project
         const existingEntry = entries.find(
           (entry) =>
@@ -158,7 +174,7 @@ export const useTimerStore = create<TimerState>()(
             start_time: activeTimer.start_time,
             end_time: endTime,
             duration,
-            user_id: "00000000-0000-0000-0000-000000000000", // Valid UUID for development
+            user_id: userId, // Use cached user ID
             created_at: new Date().toISOString(),
           };
 
@@ -182,7 +198,7 @@ export const useTimerStore = create<TimerState>()(
                 }));
               }
             } catch (error) {
-              console.error("Failed to sync entry:", error);
+              console.error("Failed to insert entry:", error);
             }
           }
         }
@@ -270,32 +286,64 @@ export const useTimerStore = create<TimerState>()(
             .order("name");
 
           if (error) throw error;
-          set({ projects: data || [] });
+          
+          // Merge with unsynced local projects
+          const { projects, unsyncedProjects } = get();
+          const unsyncedLocalProjects = projects.filter((project) =>
+            unsyncedProjects.includes(project.id)
+          );
+          
+          // Combine: unsynced local projects + fetched projects (avoiding duplicates)
+          const fetchedIds = new Set((data || []).map((p) => p.id));
+          const uniqueLocalProjects = unsyncedLocalProjects.filter(
+            (project) => !fetchedIds.has(project.id)
+          );
+          
+          const mergedProjects = [...uniqueLocalProjects, ...(data || [])];
+          
+          set({ projects: mergedProjects });
         } catch (error) {
           console.error("Failed to fetch projects:", error);
+          // If fetch fails (offline), keep existing projects
         }
       },
 
       // Add project
       addProject: async (name, color) => {
+        const { userId, isOnline } = get();
+        // Get user ID from cache (works offline)
+        if (!userId) {
+          console.error("No user ID found. Please log in.");
+          return;
+        }
+
         const newProject: Partial<Project> = {
           id: crypto.randomUUID(),
           name,
           color,
-          user_id: "00000000-0000-0000-0000-000000000000", // Valid UUID for development
+          user_id: userId, // Use cached user ID
           created_at: new Date().toISOString(),
         };
 
         // Add to local state
         set((state) => ({
           projects: [...state.projects, newProject as Project],
+          unsyncedProjects: [...state.unsyncedProjects, newProject.id!],
         }));
 
-        // Sync to server
-        try {
-          await supabase.from("projects").insert([newProject]);
-        } catch (error) {
-          console.error("Failed to add project:", error);
+        // Try to sync if online
+        if (isOnline) {
+          try {
+            const { error } = await supabase.from("projects").insert([newProject]);
+            
+            if (!error) {
+              set((state) => ({
+                unsyncedProjects: state.unsyncedProjects.filter((id) => id !== newProject.id),
+              }));
+            }
+          } catch (error) {
+            console.error("Failed to add project:", error);
+          }
         }
       },
 
@@ -327,36 +375,6 @@ export const useTimerStore = create<TimerState>()(
         }
       },
 
-      // Sync with server
-      syncWithServer: async () => {
-        const { unsyncedEntries, entries } = get();
-        
-        if (unsyncedEntries.length === 0) return;
-
-        const entriesToSync = entries.filter((entry) =>
-          unsyncedEntries.includes(entry.id)
-        );
-
-        try {
-          for (const entry of entriesToSync) {
-            await supabase.from("time_entries").upsert([entry]);
-          }
-
-          set({ unsyncedEntries: [] });
-        } catch (error) {
-          console.error("Failed to sync with server:", error);
-        }
-      },
-
-      // Set online status
-      setOnlineStatus: (status) => {
-        set({ isOnline: status });
-        
-        // Auto-sync when coming back online
-        if (status) {
-          get().syncWithServer();
-        }
-      },
 
       // Fetch today's entries
       fetchTodayEntries: async () => {
@@ -371,9 +389,25 @@ export const useTimerStore = create<TimerState>()(
             .order("start_time", { ascending: false });
 
           if (error) throw error;
-          set({ entries: data || [] });
+          
+          // Merge with unsynced local entries
+          const { entries, unsyncedEntries } = get();
+          const unsyncedLocalEntries = entries.filter((entry) =>
+            unsyncedEntries.includes(entry.id)
+          );
+          
+          // Combine: unsynced local entries + fetched entries (avoiding duplicates)
+          const fetchedIds = new Set((data || []).map((e) => e.id));
+          const uniqueLocalEntries = unsyncedLocalEntries.filter(
+            (entry) => !fetchedIds.has(entry.id)
+          );
+          
+          const mergedEntries = [...uniqueLocalEntries, ...(data || [])];
+          
+          set({ entries: mergedEntries });
         } catch (error) {
           console.error("Failed to fetch entries:", error);
+          // If fetch fails (offline), keep existing entries
         }
       },
 
@@ -385,10 +419,172 @@ export const useTimerStore = create<TimerState>()(
             .order("start_time", { ascending: false });
 
           if (error) throw error;
-          set({ entries: data || [] });
+          
+          // Merge with unsynced local entries
+          const { entries, unsyncedEntries } = get();
+          const unsyncedLocalEntries = entries.filter((entry) =>
+            unsyncedEntries.includes(entry.id)
+          );
+          
+          // Combine: unsynced local entries + fetched entries (avoiding duplicates)
+          const fetchedIds = new Set((data || []).map((e) => e.id));
+          const uniqueLocalEntries = unsyncedLocalEntries.filter(
+            (entry) => !fetchedIds.has(entry.id)
+          );
+          
+          const mergedEntries = [...uniqueLocalEntries, ...(data || [])];
+          
+          set({ entries: mergedEntries });
         } catch (error) {
           console.error("Failed to fetch all entries:", error);
+          // If fetch fails (offline), keep existing entries
         }
+      },
+
+      // Sync unsynced entries with server
+      syncWithServer: async () => {
+        const { unsyncedEntries, entries, userId } = get();
+        
+        if (unsyncedEntries.length === 0) {
+          console.log("✅ No unsynced entries to sync");
+          return;
+        }
+
+        console.log(`🔄 Syncing ${unsyncedEntries.length} unsynced entries...`);
+        set({ isSyncing: true });
+
+        // Use cached user ID (works even if auth session isn't fully loaded)
+        if (!userId) {
+          console.error("❌ No user ID found for sync. Please log in.");
+          set({ isSyncing: false });
+          return;
+        }
+
+        const entriesToSync = entries.filter((entry) =>
+          unsyncedEntries.includes(entry.id)
+        );
+
+        console.log(`📤 Found ${entriesToSync.length} entries to sync`);
+
+        for (const entry of entriesToSync) {
+          try {
+            // Ensure user_id is set
+            const entryWithUser = { ...entry, user_id: userId };
+            
+            // Try to upsert (insert or update)
+            const { error } = await supabase
+              .from("time_entries")
+              .upsert(entryWithUser, { onConflict: "id" });
+
+            if (!error) {
+              console.log(`✅ Synced entry: ${entry.id}`);
+              // Remove from unsynced list
+              set((state) => ({
+                unsyncedEntries: state.unsyncedEntries.filter(
+                  (id) => id !== entry.id
+                ),
+              }));
+            } else {
+              console.error(`❌ Failed to sync entry ${entry.id}:`, error);
+            }
+          } catch (error) {
+            console.error(`❌ Failed to sync entry ${entry.id}:`, error);
+          }
+        }
+
+        // Cleanup: Remove any orphaned IDs (IDs in unsyncedEntries that don't exist in entries)
+        const { entries: currentEntries, unsyncedEntries: currentUnsynced } = get();
+        const validEntryIds = new Set(currentEntries.map((e) => e.id));
+        const cleanedUnsyncedEntries = currentUnsynced.filter((id) => validEntryIds.has(id));
+        
+        if (cleanedUnsyncedEntries.length !== currentUnsynced.length) {
+          console.log(`🧹 Cleaned up ${currentUnsynced.length - cleanedUnsyncedEntries.length} orphaned entry IDs`);
+          set({ unsyncedEntries: cleanedUnsyncedEntries });
+        }
+
+        console.log("🎉 Sync complete!");
+        set({ isSyncing: false });
+      },
+
+      // Sync unsynced projects with server
+      syncProjects: async () => {
+        const { unsyncedProjects, projects, userId } = get();
+        
+        if (unsyncedProjects.length === 0) {
+          console.log("✅ No unsynced projects to sync");
+          return;
+        }
+
+        console.log(`🔄 Syncing ${unsyncedProjects.length} unsynced projects...`);
+        set({ isSyncing: true });
+
+        // Use cached user ID
+        if (!userId) {
+          console.error("❌ No user ID found for project sync. Please log in.");
+          set({ isSyncing: false });
+          return;
+        }
+
+        const projectsToSync = projects.filter((project) =>
+          unsyncedProjects.includes(project.id)
+        );
+
+        console.log(`📤 Found ${projectsToSync.length} projects to sync`);
+
+        for (const project of projectsToSync) {
+          try {
+            // Ensure user_id is set
+            const projectWithUser = { ...project, user_id: userId };
+            
+            // Try to upsert (insert or update)
+            const { error } = await supabase
+              .from("projects")
+              .upsert(projectWithUser, { onConflict: "id" });
+
+            if (!error) {
+              console.log(`✅ Synced project: ${project.id}`);
+              // Remove from unsynced list
+              set((state) => ({
+                unsyncedProjects: state.unsyncedProjects.filter(
+                  (id) => id !== project.id
+                ),
+              }));
+            } else {
+              console.error(`❌ Failed to sync project ${project.id}:`, error);
+            }
+          } catch (error) {
+            console.error(`❌ Failed to sync project ${project.id}:`, error);
+          }
+        }
+
+        // Cleanup: Remove any orphaned IDs (IDs in unsyncedProjects that don't exist in projects)
+        const { projects: currentProjects, unsyncedProjects: currentUnsyncedProjects } = get();
+        const validProjectIds = new Set(currentProjects.map((p) => p.id));
+        const cleanedUnsyncedProjects = currentUnsyncedProjects.filter((id) => validProjectIds.has(id));
+        
+        if (cleanedUnsyncedProjects.length !== currentUnsyncedProjects.length) {
+          console.log(`🧹 Cleaned up ${currentUnsyncedProjects.length - cleanedUnsyncedProjects.length} orphaned project IDs`);
+          set({ unsyncedProjects: cleanedUnsyncedProjects });
+        }
+
+        console.log("🎉 Project sync complete!");
+        set({ isSyncing: false });
+      },
+
+      // Set online status
+      setOnlineStatus: (status) => {
+        set({ isOnline: status });
+        
+        // Trigger sync when coming back online
+        if (status) {
+          get().syncWithServer();
+          get().syncProjects();
+        }
+      },
+
+      // Set user ID (for offline use)
+      setUserId: (userId) => {
+        set({ userId });
       },
     }),
     {
@@ -398,6 +594,8 @@ export const useTimerStore = create<TimerState>()(
         entries: state.entries,
         projects: state.projects,
         unsyncedEntries: state.unsyncedEntries,
+        unsyncedProjects: state.unsyncedProjects,
+        userId: state.userId,
       }),
     }
   )

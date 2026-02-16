@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { Autocomplete } from "@/components/ui/Autocomplete";
 import { Combobox } from "@/components/ui/Combobox";
 import { Select } from "@/components/ui/Select";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { formatDuration, formatDurationHuman, formatDurationForEdit, parseTimeToSeconds } from "@/lib/utils";
 import type { TimeEntry, GroupedEntries } from "@/types";
 
@@ -23,6 +24,8 @@ export default function TrackerPage() {
     fetchProjects,
     fetchTodayEntries,
     setOnlineStatus,
+    syncWithServer,
+    syncProjects,
   } = useTimerStore();
 
   const [description, setDescription] = useState("");
@@ -31,17 +34,32 @@ export default function TrackerPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<TimeEntry>>({});
   const [currentPage, setCurrentPage] = useState(1);
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    isOpen: boolean;
+    entryId: string | null;
+  }>({ isOpen: false, entryId: null });
   const ENTRIES_PER_PAGE = 20;
 
   // Update elapsed time for active timer
   useEffect(() => {
-    if (!activeTimer) return;
+    if (!activeTimer) {
+      setElapsedTime(0);
+      return;
+    }
 
-    const interval = setInterval(() => {
-      const elapsed = Math.floor(
+    // Calculate initial elapsed time immediately
+    const calculateElapsed = () => {
+      return Math.floor(
         (Date.now() - new Date(activeTimer.start_time).getTime()) / 1000
       );
-      setElapsedTime(elapsed);
+    };
+
+    // Set initial value immediately to avoid showing zeros
+    setElapsedTime(calculateElapsed());
+
+    // Then update every second
+    const interval = setInterval(() => {
+      setElapsedTime(calculateElapsed());
     }, 1000);
 
     return () => clearInterval(interval);
@@ -51,6 +69,12 @@ export default function TrackerPage() {
   useEffect(() => {
     fetchProjects();
     fetchTodayEntries();
+
+    // Trigger sync if online and there are unsynced entries/projects
+    if (navigator.onLine) {
+      syncWithServer();
+      syncProjects();
+    }
 
     // Monitor online status
     const handleOnline = () => setOnlineStatus(true);
@@ -63,16 +87,18 @@ export default function TrackerPage() {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
-  }, [fetchProjects, fetchTodayEntries, setOnlineStatus]);
+  }, [fetchProjects, fetchTodayEntries, setOnlineStatus, syncWithServer, syncProjects]);
 
   const handleStartStop = () => {
     if (activeTimer) {
       stopTimer();
       setDescription("");
       setSelectedProjectId("");
-      setElapsedTime(0); // Reset timer display
     } else {
-      if (!description.trim()) return;
+      if (!description.trim()) {
+        alert("Please enter a description");
+        return;
+      }
       startTimer(description, selectedProjectId || null);
     }
   };
@@ -99,9 +125,13 @@ export default function TrackerPage() {
     setEditForm({});
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this entry?")) {
-      await deleteEntry(id);
+  const handleDelete = (id: string) => {
+    setDeleteConfirm({ isOpen: true, entryId: id });
+  };
+
+  const confirmDelete = async () => {
+    if (deleteConfirm.entryId) {
+      await deleteEntry(deleteConfirm.entryId);
     }
   };
 
@@ -422,6 +452,18 @@ export default function TrackerPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        onClose={() => setDeleteConfirm({ isOpen: false, entryId: null })}
+        onConfirm={confirmDelete}
+        title="Delete Time Entry"
+        message="Are you sure you want to delete this time entry? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </div>
   );
 }

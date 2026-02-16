@@ -5,6 +5,7 @@ import { Plus, Edit2, Trash2, Check, X } from "lucide-react";
 import { useTimerStore } from "@/store/useTimerStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { Project } from "@/types";
 
 const PRESET_COLORS = [
@@ -31,9 +32,14 @@ export default function ProjectsPage() {
     useTimerStore();
 
   const [isAdding, setIsAdding] = useState(false);
+  const [newProjectName, setNewProjectName] = useState("");
+  const [newProjectColor, setNewProjectColor] = useState(PRESET_COLORS[0]);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [newProject, setNewProject] = useState({ name: "", color: PRESET_COLORS[0] });
   const [editForm, setEditForm] = useState<Partial<Project>>({});
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    isOpen: boolean;
+    projectId: string | null;
+  }>({ isOpen: false, projectId: null });
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 20;
@@ -60,10 +66,11 @@ export default function ProjectsPage() {
   }, [searchQuery]);
 
   const handleAddProject = async () => {
-    if (!newProject.name.trim()) return;
+    if (!newProjectName.trim()) return;
 
-    await addProject(newProject.name, newProject.color);
-    setNewProject({ name: "", color: PRESET_COLORS[0] });
+    await addProject(newProjectName, newProjectColor);
+    setNewProjectName("");
+    setNewProjectColor(PRESET_COLORS[0]);
     setIsAdding(false);
   };
 
@@ -88,13 +95,13 @@ export default function ProjectsPage() {
     setEditForm({});
   };
 
-  const handleDelete = async (id: string) => {
-    if (
-      confirm(
-        "Are you sure you want to delete this project? This will not delete associated time entries."
-      )
-    ) {
-      await deleteProject(id);
+  const handleDelete = (id: string) => {
+    setDeleteConfirm({ isOpen: true, projectId: id });
+  };
+
+  const confirmDelete = async () => {
+    if (deleteConfirm.projectId) {
+      await deleteProject(deleteConfirm.projectId);
     }
   };
 
@@ -118,8 +125,8 @@ export default function ProjectsPage() {
                 Project Name
               </label>
               <Input
-                value={newProject.name}
-                onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
                 placeholder="Enter project name"
                 autoFocus
               />
@@ -133,9 +140,9 @@ export default function ProjectsPage() {
                 {PRESET_COLORS.map((color) => (
                   <button
                     key={color}
-                    onClick={() => setNewProject({ ...newProject, color })}
+                    onClick={() => setNewProjectColor(color)}
                     className={`w-10 h-10 rounded-lg transition-all ${
-                      newProject.color === color
+                      newProjectColor === color
                         ? "ring-2 ring-offset-2 ring-gray-900 scale-110"
                         : "hover:scale-105"
                     }`}
@@ -303,6 +310,18 @@ export default function ProjectsPage() {
           </Button>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        onClose={() => setDeleteConfirm({ isOpen: false, projectId: null })}
+        onConfirm={confirmDelete}
+        title="Delete Project"
+        message="Are you sure you want to delete this project? This will not delete associated time entries."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </div>
   );
 }

@@ -75,17 +75,25 @@
 - [x] **Time Entries**: Optimized list rendering (entries are grouped and rendered efficiently).
 - [x] **Autocomplete**: Limited suggestions to top 20 matches for performance.
 
-### Phase 7: Authentication & Authorization (NEW)
-- [ ] **Auth Pages**: Create Login and Register pages with Supabase Auth (Email/Password).
-- [ ] **Middleware**: Protect application routes (`/`, `/projects`, `/reports`) to require authentication.
-- [ ] **Integration**: Update `useTimerStore` and API calls to use the authenticated user's ID instead of hardcoded ID.
-- [ ] **RLS Policies**: Configure Row Level Security in Supabase to restrict data access to the data owner only.
-- [ ] **Navbar**: Add user profile summary (email) and Sign Out button.
+### Phase 7: Authentication & Authorization (COMPLETED)
+- [x] **Auth Pages**: Create Login and Register pages with Supabase Auth (Email/Password).
+- [x] **Middleware**: Protect application routes (`/`, `/projects`, `/reports`) to require authentication.
+- [x] **Integration**: Update `useTimerStore` and API calls to use the authenticated user's ID instead of hardcoded ID.
+- [x] **RLS Policies**: Configure Row Level Security in Supabase to restrict data access to the data owner only.
+- [x] **Navbar**: Add user profile summary (email) and Sign Out button.
 
-### Phase 8: Verification & Handover
+### Phase 8: UX & Stability Enhancements (COMPLETED)
+- [x] **Visual Sync Indicator**: Added real-time status component (Offline/Syncing/Synced) in the UI.
+- [x] **Data Integrity**: Implemented auto-cleanup for orphaned unsynced entries/projects to ensure accurate pending counts.
+- [x] **UI Polish**: Replaced native browser alerts with custom, animated `ConfirmDialog` modals for delete actions.
+- [x] **UX Logic**: Fixed layout shift issues by compensating for scrollbar width when modals open.
+- [x] **Demo Logic**: Implemented 'Demo Login' feature for instant test account access.
+- [x] **Code Quality**: Refactored `useTimerStore` to remove duplicate logic and improve type safety.
+
+### Phase 9: Verification & Handover
 - [x] Verify Supabase Connectivity.
 - [x] Verify Offline Sync.
-- [ ] Final Code Review.
+- [x] Final Code Review.
 - [ ] Update Documentation.
 
 ## Verification Plan
@@ -94,3 +102,5 @@
 1.  **Timer Flow**: Start timer -> Refresh page -> Stop timer. (Pass)
 2.  **Offline Test**: Disconnect network -> Start/Stop timer -> Reconnect -> Check Supabase. (Pass)
 3.  **Reports**: Create entries -> Verify totals -> Export CSV. (Pass)
+4.  **UX Flows**: Delete entry/project (Modal) -> Check Sync Status indicator. (Pass)
+5.  **Demo Access**: Click 'Demo Account' -> Verify login -> Verify User Menu closed on load. (Pass)
