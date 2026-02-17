@@ -6,7 +6,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { Clock, FolderKanban, BarChart3, LogOut, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
-import { Button } from "@/components/ui/Button";
 import { useTimerStore } from "@/store/useTimerStore";
 
 export function Navbar() {

@@ -1,7 +1,9 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 import type { Project, TimeEntry, ActiveTimer } from "@/types";
+import { timerService } from "@/lib/services/timerService";
+import { MAX_DAILY_SECONDS, MESSAGES } from "@/lib/constants";
 
 interface TimerState {
   // State
@@ -12,6 +14,7 @@ interface TimerState {
   unsyncedProjects: string[]; // IDs of projects not yet synced
   isOnline: boolean;
   isSyncing: boolean; // Track active sync operations
+  isLoading: boolean; // Track initial data fetching
   userId: string | null; // Cached user ID for offline use
 
   // Timer actions
@@ -50,6 +53,7 @@ export const useTimerStore = create<TimerState>()(
       unsyncedProjects: [],
       isOnline: true,
       isSyncing: false,
+      isLoading: true,
       userId: null,
 
       // Start timer
@@ -67,11 +71,11 @@ export const useTimerStore = create<TimerState>()(
         );
         const todayTotalDuration = todayEntries.reduce((sum, entry) => sum + (entry.duration || 0), 0);
         
-        // 24 hours = 86400 seconds
-        if (todayTotalDuration >= 86400) {
+        // Check 24-hour limit
+        if (todayTotalDuration >= MAX_DAILY_SECONDS) {
           const hours = Math.floor(todayTotalDuration / 3600);
           const minutes = Math.floor((todayTotalDuration % 3600) / 60);
-          alert(`Cannot start timer: You have already tracked 24 hours today (${hours}h ${minutes}m). Please complete entries for a different day.`);
+          toast.error(MESSAGES.DAILY_LIMIT_REACHED(hours, minutes));
           return;
         }
         
@@ -105,9 +109,10 @@ export const useTimerStore = create<TimerState>()(
         );
         const todayTotalDuration = todayEntries.reduce((sum, entry) => sum + (entry.duration || 0), 0);
         
-        // 24 hours = 86400 seconds
-        if (todayTotalDuration + duration > 86400) {
-          alert(`Cannot add entry: This would exceed the 24-hour daily limit. Current total: ${Math.floor(todayTotalDuration / 3600)}h ${Math.floor((todayTotalDuration % 3600) / 60)}m`);
+        if (todayTotalDuration + duration > MAX_DAILY_SECONDS) {
+          const hours = Math.floor(todayTotalDuration / 3600);
+          const minutes = Math.floor((todayTotalDuration % 3600) / 60);
+          toast.error(MESSAGES.ENTRY_LIMIT_EXCEEDED(hours, minutes));
           set({ activeTimer: null });
           return;
         }
@@ -115,7 +120,7 @@ export const useTimerStore = create<TimerState>()(
         // Get user ID from cache (works offline)
         const { userId } = get();
         if (!userId) {
-          console.error("No user ID found. Please log in.");
+          toast.error("No user ID found. Please log in.");
           set({ activeTimer: null });
           return;
         }
@@ -151,10 +156,7 @@ export const useTimerStore = create<TimerState>()(
           // Try to sync update if online
           if (isOnline) {
             try {
-              await supabase
-                .from("time_entries")
-                .update(updates)
-                .eq("id", existingEntry.id);
+              await timerService.updateEntry(existingEntry.id, updates);
 
               set((state) => ({
                 unsyncedEntries: state.unsyncedEntries.filter(
@@ -188,15 +190,11 @@ export const useTimerStore = create<TimerState>()(
           // Try to sync if online
           if (isOnline) {
             try {
-              const { error } = await supabase
-                .from("time_entries")
-                .insert([newEntry]);
+              await timerService.createEntry(newEntry);
 
-              if (!error) {
-                set((state) => ({
-                  unsyncedEntries: state.unsyncedEntries.filter((id) => id !== newEntry.id),
-                }));
-              }
+              set((state) => ({
+                unsyncedEntries: state.unsyncedEntries.filter((id) => id !== newEntry.id),
+              }));
             } catch (error) {
               console.error("Failed to insert entry:", error);
             }
@@ -227,8 +225,8 @@ export const useTimerStore = create<TimerState>()(
           );
           const sameDayTotal = sameDayEntries.reduce((sum, entry) => sum + (entry.duration || 0), 0);
 
-          if (sameDayTotal + updates.duration > 86400) {
-            alert(`Cannot update entry: This would exceed the 24-hour daily limit for ${entryDate.toLocaleDateString()}`);
+          if (sameDayTotal + updates.duration > MAX_DAILY_SECONDS) {
+            toast.error(MESSAGES.ENTRY_UPDATE_LIMIT_EXCEEDED(entryDate.toLocaleDateString()));
             return;
           }
         }
@@ -246,7 +244,7 @@ export const useTimerStore = create<TimerState>()(
         // Try to sync if online
         if (isOnline) {
           try {
-            await supabase.from("time_entries").update(updates).eq("id", id);
+            await timerService.updateEntry(id, updates);
             
             set((state) => ({
               unsyncedEntries: state.unsyncedEntries.filter((entryId) => entryId !== id),
@@ -270,7 +268,7 @@ export const useTimerStore = create<TimerState>()(
         // Try to delete from server if online
         if (isOnline) {
           try {
-            await supabase.from("time_entries").delete().eq("id", id);
+            await timerService.deleteEntry(id);
           } catch (error) {
             console.error("Failed to delete entry:", error);
           }
@@ -279,13 +277,9 @@ export const useTimerStore = create<TimerState>()(
 
       // Fetch projects
       fetchProjects: async () => {
+        set({ isLoading: true });
         try {
-          const { data, error } = await supabase
-            .from("projects")
-            .select("*")
-            .order("name");
-
-          if (error) throw error;
+          const data = await timerService.fetchProjects();
           
           // Merge with unsynced local projects
           const { projects, unsyncedProjects } = get();
@@ -305,6 +299,8 @@ export const useTimerStore = create<TimerState>()(
         } catch (error) {
           console.error("Failed to fetch projects:", error);
           // If fetch fails (offline), keep existing projects
+        } finally {
+          set({ isLoading: false });
         }
       },
 
@@ -334,13 +330,11 @@ export const useTimerStore = create<TimerState>()(
         // Try to sync if online
         if (isOnline) {
           try {
-            const { error } = await supabase.from("projects").insert([newProject]);
+            await timerService.createProject(newProject);
             
-            if (!error) {
-              set((state) => ({
-                unsyncedProjects: state.unsyncedProjects.filter((id) => id !== newProject.id),
-              }));
-            }
+            set((state) => ({
+              unsyncedProjects: state.unsyncedProjects.filter((id) => id !== newProject.id),
+            }));
           } catch (error) {
             console.error("Failed to add project:", error);
           }
@@ -356,7 +350,7 @@ export const useTimerStore = create<TimerState>()(
         }));
 
         try {
-          await supabase.from("projects").update(updates).eq("id", id);
+          await timerService.updateProject(id, updates);
         } catch (error) {
           console.error("Failed to update project:", error);
         }
@@ -369,26 +363,23 @@ export const useTimerStore = create<TimerState>()(
         }));
 
         try {
-          await supabase.from("projects").delete().eq("id", id);
+          await timerService.deleteProject(id);
         } catch (error) {
           console.error("Failed to delete project:", error);
         }
       },
 
-
       // Fetch today's entries
       fetchTodayEntries: async () => {
+        set({ isLoading: true });
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
 
         try {
-          const { data, error } = await supabase
-            .from("time_entries")
-            .select("*")
-            .gte("start_time", today.toISOString())
-            .order("start_time", { ascending: false });
-
-          if (error) throw error;
+          // Use fetchEntries with date range
+          const data = await timerService.fetchEntries(today, tomorrow);
           
           // Merge with unsynced local entries
           const { entries, unsyncedEntries } = get();
@@ -408,17 +399,14 @@ export const useTimerStore = create<TimerState>()(
         } catch (error) {
           console.error("Failed to fetch entries:", error);
           // If fetch fails (offline), keep existing entries
+        } finally {
+          set({ isLoading: false });
         }
       },
 
       fetchAllEntries: async () => {
         try {
-          const { data, error } = await supabase
-            .from("time_entries")
-            .select("*")
-            .order("start_time", { ascending: false });
-
-          if (error) throw error;
+          const data = await timerService.fetchAllEntries();
           
           // Merge with unsynced local entries
           const { entries, unsyncedEntries } = get();
@@ -472,21 +460,15 @@ export const useTimerStore = create<TimerState>()(
             const entryWithUser = { ...entry, user_id: userId };
             
             // Try to upsert (insert or update)
-            const { error } = await supabase
-              .from("time_entries")
-              .upsert(entryWithUser, { onConflict: "id" });
+            await timerService.upsertEntry(entryWithUser);
 
-            if (!error) {
-              console.log(`✅ Synced entry: ${entry.id}`);
-              // Remove from unsynced list
-              set((state) => ({
-                unsyncedEntries: state.unsyncedEntries.filter(
-                  (id) => id !== entry.id
-                ),
-              }));
-            } else {
-              console.error(`❌ Failed to sync entry ${entry.id}:`, error);
-            }
+            console.log(`✅ Synced entry: ${entry.id}`);
+            // Remove from unsynced list
+            set((state) => ({
+              unsyncedEntries: state.unsyncedEntries.filter(
+                (id) => id !== entry.id
+              ),
+            }));
           } catch (error) {
             console.error(`❌ Failed to sync entry ${entry.id}:`, error);
           }
@@ -537,21 +519,15 @@ export const useTimerStore = create<TimerState>()(
             const projectWithUser = { ...project, user_id: userId };
             
             // Try to upsert (insert or update)
-            const { error } = await supabase
-              .from("projects")
-              .upsert(projectWithUser, { onConflict: "id" });
+            await timerService.upsertProject(projectWithUser);
 
-            if (!error) {
-              console.log(`✅ Synced project: ${project.id}`);
-              // Remove from unsynced list
-              set((state) => ({
-                unsyncedProjects: state.unsyncedProjects.filter(
-                  (id) => id !== project.id
-                ),
-              }));
-            } else {
-              console.error(`❌ Failed to sync project ${project.id}:`, error);
-            }
+            console.log(`✅ Synced project: ${project.id}`);
+            // Remove from unsynced list
+            set((state) => ({
+              unsyncedProjects: state.unsyncedProjects.filter(
+                (id) => id !== project.id
+              ),
+            }));
           } catch (error) {
             console.error(`❌ Failed to sync project ${project.id}:`, error);
           }

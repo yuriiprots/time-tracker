@@ -23,11 +23,11 @@ A modern time tracking web application built with Next.js, TypeScript, Tailwind 
 - **Database**: Supabase (PostgreSQL)
 - **State Management**: Zustand with persist middleware
 - **Icons**: Lucide React
+- **Notifications**: Sonner
 - **Date Utilities**: date-fns
 
 ## Project Structure
 
-```
 time-tracker/
 ├── app/                    # Next.js app directory
 │   ├── layout.tsx         # Root layout with navigation
@@ -35,13 +35,21 @@ time-tracker/
 │   ├── projects/          # Projects management
 │   └── reports/           # Reports and analytics
 ├── components/
-│   ├── ui/                # Reusable UI components
+│   ├── features/          # Domain-specific components
+│   │   ├── timer/         # Timer & Entry components
+│   │   └── entries/       # Entry management
+│   ├── ui/                # Reusable UI components (Button, Input, Skeleton)
 │   └── layout/            # Layout components (Navbar)
+├── hooks/                  # Custom React hooks
+│   ├── useActiveTimer.ts  # Timer logic
+│   └── useDailyEntries.ts # Data aggregation logic
 ├── lib/
+│   ├── services/          # API services (Supabase)
 │   ├── supabase.ts        # Supabase client
+│   ├── constants.ts       # App constants
 │   └── utils.ts           # Utility functions
 ├── store/
-│   └── useTimerStore.ts   # Zustand store with offline sync
+│   └── useTimerStore.ts   # Zustand store (Global State)
 ├── types/
 │   └── index.ts           # TypeScript type definitions
 └── supabase/
@@ -142,7 +150,12 @@ The application automatically detects when you go offline and:
 ### State Management
 - **Zustand** for lightweight, performant state management
 - **Persist middleware** for localStorage synchronization
-- Custom sync logic for Supabase integration
+- **Custom sync logic** for Supabase integration
+
+### Architecture Patterns
+- **Service-Repository Pattern**: All API interactions are encapsulated in `lib/services`, keeping components and store clean.
+- **Hook-Based Logic**: Complex business logic (timer intervals, data aggregation) is extracted into custom hooks (`useActiveTimer`, `useDailyEntries`).
+- **Atomic Design**: UI is broken down into small, reusable, presentational components (Features & UI).
 
 ### Database Design
 - **Row Level Security (RLS)** for multi-user support

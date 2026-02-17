@@ -18,19 +18,15 @@ export interface ComboboxProps {
   className?: string;
 }
 
-export const Combobox = React.forwardRef<HTMLDivElement, ComboboxProps>(
-  (
-    {
-      options,
-      value,
-      onValueChange,
-      placeholder = "Select...",
-      emptyText = "No results found",
-      disabled = false,
-      className,
-    },
-    ref
-  ) => {
+export const Combobox = ({
+  options,
+  value,
+  onValueChange,
+  placeholder = "Select option",
+  emptyText = "No results found",
+  disabled = false,
+  className,
+}: ComboboxProps) => {
     const [isOpen, setIsOpen] = React.useState(false);
     const [search, setSearch] = React.useState("");
     const wrapperRef = React.useRef<HTMLDivElement>(null);
@@ -154,7 +150,6 @@ export const Combobox = React.forwardRef<HTMLDivElement, ComboboxProps>(
         )}
       </div>
     );
-  }
-);
+};
 
 Combobox.displayName = "Combobox";

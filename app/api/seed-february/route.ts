@@ -77,7 +77,8 @@ export async function GET() {
       entriesCreated: entriesToInsert.length,
       dateRange: "February 1-28, 2026"
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

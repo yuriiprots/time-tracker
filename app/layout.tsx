@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
 import { SyncStatus } from "@/components/SyncStatus";
+import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -24,6 +25,7 @@ export default function RootLayout({
           {children}
         </main>
         <SyncStatus />
+        <Toaster position="top-right" richColors />
       </body>
     </html>
   );

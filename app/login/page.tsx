@@ -32,8 +32,9 @@ export default function LoginPage() {
         router.push("/");
         router.refresh();
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to sign in");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to sign in";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -69,8 +70,9 @@ export default function LoginPage() {
         router.push("/");
         router.refresh();
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to sign in with demo account");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to sign in with demo account";
+      setError(message);
       setLoading(false);
     }
   };
@@ -158,7 +160,7 @@ export default function LoginPage() {
           </div>
 
           <div className="text-center text-sm">
-            <span className="text-gray-600">Don't have an account? </span>
+            <span className="text-gray-600">Don&apos;t have an account? </span>
             <Link href="/register" className="font-medium text-primary-600 hover:text-primary-700">
               Sign up
             </Link>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Wifi, WifiOff, Cloud, CloudOff, Loader2 } from "lucide-react";
+import { WifiOff, Cloud, CloudOff, Loader2 } from "lucide-react";
 import { useTimerStore } from "@/store/useTimerStore";
 
 export function SyncStatus() {
