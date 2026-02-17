@@ -17,6 +17,7 @@ A modern time tracking web application built with Next.js, TypeScript, Tailwind 
 
 ## Tech Stack
 
+- **AI Tools**: Google Antigravity, Antigravity Kit, Gemini/Claude
 - **Framework**: Next.js 15 (App Router)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
