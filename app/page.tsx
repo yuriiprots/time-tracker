@@ -96,7 +96,6 @@ export default function TrackerPage() {
       setSelectedProjectId("");
     } else {
       if (!description.trim()) {
-        alert("Please enter a description");
         return;
       }
       startTimer(description, selectedProjectId || null);
@@ -181,48 +180,64 @@ export default function TrackerPage() {
   }, [todayEntries]);
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className="container mx-auto px-4 py-4 md:py-8 max-w-4xl pb-20 md:pb-8">
       {/* Active Timer Section - Sticky when scrolling */}
-      <div className={`bg-white rounded-xl shadow-sm border border-border p-6 mb-8 transition-all ${
+      <div className={`bg-white rounded-xl shadow-sm border border-border p-4 md:p-6 mb-6 md:mb-8 transition-all ${
         activeTimer ? 'sticky top-20 z-10 shadow-lg' : ''
       }`}>
-        <div className="flex items-center gap-4 mb-4">
-          <div className="flex-1">
-            <Autocomplete
-              placeholder="What are you working on?"
-              value={activeTimer?.description || description}
-              onValueChange={setDescription}
-              suggestions={taskSuggestions}
+        <div className="flex flex-col gap-3 md:gap-4 mb-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 md:gap-4">
+            <div className="flex-1">
+              <Autocomplete
+                placeholder="What are you working on?"
+                value={activeTimer?.description || description}
+                onValueChange={setDescription}
+                suggestions={taskSuggestions}
+                disabled={!!activeTimer}
+                maxLength={200}
+                className="text-base md:text-lg"
+              />
+              {!activeTimer && (
+                <p className={`text-xs mt-1 ${
+                  description.length >= 200 
+                    ? "text-red-600 font-semibold" 
+                    : description.length >= 180 
+                    ? "text-orange-600" 
+                    : "text-gray-500"
+                }`}>
+                  {description.length}/200 characters
+                  {description.length >= 200 && " (maximum reached)"}
+                </p>
+              )}
+            </div>
+            <Combobox
+              options={[
+                { value: "", label: "No Project" },
+                ...projects.map((p) => ({
+                  value: p.id,
+                  label: p.name,
+                  color: p.color,
+                })),
+              ]}
+              value={activeTimer?.project_id || selectedProjectId}
+              onValueChange={setSelectedProjectId}
               disabled={!!activeTimer}
-              className="text-lg"
+              placeholder="Select project"
+              className="w-full sm:w-64"
             />
           </div>
-          <Combobox
-            options={[
-              { value: "", label: "No Project" },
-              ...projects.map((p) => ({
-                value: p.id,
-                label: p.name,
-                color: p.color,
-              })),
-            ]}
-            value={activeTimer?.project_id || selectedProjectId}
-            onValueChange={setSelectedProjectId}
-            disabled={!!activeTimer}
-            placeholder="Select project"
-            className="w-64"
-          />
         </div>
 
-        <div className="flex items-center justify-between">
-          <div className="text-3xl font-mono font-bold text-gray-900">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="text-2xl md:text-3xl font-mono font-bold text-gray-900 w-full sm:w-auto text-center sm:text-left">
             {formatDuration(elapsedTime)}
           </div>
           <Button
             onClick={handleStartStop}
             variant={activeTimer ? "danger" : "primary"}
             size="lg"
-            className="min-w-32"
+            className="w-full sm:w-auto sm:min-w-32"
+            disabled={!activeTimer && !description.trim()}
           >
             {activeTimer ? (
               <>
@@ -311,14 +326,14 @@ export default function TrackerPage() {
             <div key={idx} className="bg-white rounded-xl shadow-sm border border-border overflow-hidden">
               {/* Project Header */}
               <div className="bg-gray-50 px-6 py-3 border-b border-border flex items-center justify-between">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
                   {group.project && (
                     <div
-                      className="w-3 h-3 rounded-full"
+                      className="w-3 h-3 rounded-full flex-shrink-0"
                       style={{ backgroundColor: group.project.color }}
                     />
                   )}
-                  <span className="font-semibold text-gray-900">
+                  <span className="font-semibold text-gray-900 truncate" title={group.project?.name || "No Project"}>
                     {group.project?.name || "No Project"}
                   </span>
                 </div>
@@ -330,16 +345,29 @@ export default function TrackerPage() {
               {/* Entries */}
               <div className="divide-y divide-border">
                 {group.entries.map((entry) => (
-                  <div key={entry.id} className="px-6 py-4">
+                  <div key={entry.id} className="px-4 md:px-6 py-3 md:py-4">
                     {editingId === entry.id ? (
                       <div className="space-y-3">
-                        <Input
-                          value={editForm.description}
-                          onChange={(e) =>
-                            setEditForm({ ...editForm, description: e.target.value })
-                          }
-                          placeholder="Description"
-                        />
+                        <div>
+                          <Input
+                            value={editForm.description}
+                            onChange={(e) =>
+                              setEditForm({ ...editForm, description: e.target.value })
+                            }
+                            placeholder="Description"
+                            maxLength={200}
+                          />
+                          <p className={`text-xs mt-1 ${
+                            (editForm.description?.length || 0) >= 200 
+                              ? "text-red-600 font-semibold" 
+                              : (editForm.description?.length || 0) >= 180 
+                              ? "text-orange-600" 
+                              : "text-gray-500"
+                          }`}>
+                            {editForm.description?.length || 0}/200 characters
+                            {(editForm.description?.length || 0) >= 200 && " (maximum reached)"}
+                          </p>
+                        </div>
                         <div className="flex items-center gap-3">
                           <Combobox
                             options={[
@@ -377,34 +405,36 @@ export default function TrackerPage() {
                         </div>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <p className="text-gray-900 font-medium">{entry.description}</p>
-                          <p className="text-sm text-gray-500">
-                            {new Date(entry.start_time).toLocaleTimeString()} -{" "}
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-gray-900 font-medium truncate text-sm md:text-base" title={entry.description}>{entry.description}</p>
+                          <p className="text-xs md:text-sm text-gray-500">
+                            {new Date(entry.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} -{" "}
                             {entry.end_time
-                              ? new Date(entry.end_time).toLocaleTimeString()
+                              ? new Date(entry.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                               : "Running"}
                           </p>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-lg font-semibold text-gray-900">
+                        <div className="flex items-center justify-between sm:justify-end gap-2 md:gap-3">
+                          <span className="text-base md:text-lg font-semibold text-gray-900">
                             {formatDurationHuman(entry.duration || 0)}
                           </span>
-                          <Button
-                            onClick={() => handleEdit(entry)}
-                            size="sm"
-                            variant="ghost"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            onClick={() => handleDelete(entry.id)}
-                            size="sm"
-                            variant="ghost"
-                          >
-                            <Trash2 className="h-4 w-4 text-red-600" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              onClick={() => handleEdit(entry)}
+                              size="sm"
+                              variant="ghost"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              onClick={() => handleDelete(entry.id)}
+                              size="sm"
+                              variant="ghost"
+                            >
+                              <Trash2 className="h-4 w-4 text-red-600" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     )}

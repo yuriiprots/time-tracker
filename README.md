@@ -4,14 +4,16 @@ A modern time tracking web application built with Next.js, TypeScript, Tailwind 
 
 ## Features
 
+- 📱 **Mobile-First Design**: Fully responsive UI with app-like bottom navigation on mobile devices
 - 🔐 **Authentication**: Secure email/password authentication with Supabase Auth
 - ⏱️ **Active Timer**: Start/Stop timer with task description and project selection
 - 📝 **Time Management**: View, edit, and delete time entries
 - 📊 **Project Management**: Create and manage projects with custom colors
 - 📈 **Reports**: View time summaries by day/week/month with CSV export
-- 🔄 **Offline Support**: Continue tracking time offline with automatic sync when back online
+- 🔄 **Offline Support**: Robust offline capability with background synchronization when online
 - 💾 **Local Persistence**: Data persists in localStorage until synced with Supabase
 - 🔒 **Data Privacy**: Row Level Security ensures users only see their own data
+- ⚡ **Optimized Performance**: Client-side pagination, search, and efficient list rendering
 
 ## Tech Stack
 
@@ -109,25 +111,24 @@ time-tracker/
 ## Usage
 
 ### Tracking Time
-
-1. Enter a task description in the input field
+1. Enter a task description (Start button enables once text is entered)
 2. Optionally select a project
 3. Click "Start" to begin tracking
-4. Click "Stop" to save the entry
+4. Click "Stop" to save the entry (auto-saves to local storage immediately)
 
 ### Managing Projects
-
-1. Navigate to the "Projects" page
+1. Navigate to the "Projects" page (Folder icon on mobile)
 2. Click "New Project" to create a project
 3. Choose a name and color
 4. Edit or delete projects as needed
 
 ### Viewing Reports
-
-1. Navigate to the "Reports" page
+1. Navigate to the "Reports" page (Chart icon on mobile)
 2. Select a date range (Day/Week/Month)
 3. View time breakdown by project
 4. Export data to CSV
+
+> **Note**: On mobile devices, use the bottom navigation bar to switch between views. Tap the "Profile" icon to access account settings and Sign Out.
 
 ## Offline Support
 

@@ -106,10 +106,10 @@ export default function ProjectsPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Projects</h1>
-        <Button onClick={() => setIsAdding(true)} variant="primary">
+    <div className="container mx-auto px-4 py-4 md:py-8 max-w-4xl pb-20 md:pb-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Projects</h1>
+        <Button onClick={() => setIsAdding(true)} variant="primary" className="w-full sm:w-auto">
           <Plus className="h-5 w-5 mr-2" />
           New Project
         </Button>
@@ -117,7 +117,7 @@ export default function ProjectsPage() {
 
       {/* Add New Project Form */}
       {isAdding && (
-        <div className="bg-white rounded-xl shadow-sm border border-border p-6 mb-6">
+        <div className="bg-white rounded-xl shadow-sm border border-border p-4 md:p-6 mb-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Create New Project</h3>
           <div className="space-y-4">
             <div>
@@ -128,8 +128,19 @@ export default function ProjectsPage() {
                 value={newProjectName}
                 onChange={(e) => setNewProjectName(e.target.value)}
                 placeholder="Enter project name"
+                maxLength={50}
                 autoFocus
               />
+              <p className={`text-xs mt-1 ${
+                newProjectName.length >= 50 
+                  ? "text-red-600 font-semibold" 
+                  : newProjectName.length >= 45 
+                  ? "text-orange-600" 
+                  : "text-gray-500"
+              }`}>
+                {newProjectName.length}/50 characters
+                {newProjectName.length >= 50 && " (maximum reached)"}
+              </p>
             </div>
 
             <div>
@@ -203,7 +214,18 @@ export default function ProjectsPage() {
                     value={editForm.name}
                     onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                     placeholder="Project name"
+                    maxLength={50}
                   />
+                  <p className={`text-xs mt-1 ${
+                    (editForm.name?.length || 0) >= 50 
+                      ? "text-red-600 font-semibold" 
+                      : (editForm.name?.length || 0) >= 45 
+                      ? "text-orange-600" 
+                      : "text-gray-500"
+                  }`}>
+                    {editForm.name?.length || 0}/50 characters
+                    {(editForm.name?.length || 0) >= 50 && " (maximum reached)"}
+                  </p>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -225,43 +247,39 @@ export default function ProjectsPage() {
                     </div>
                   </div>
 
-                  <div className="flex gap-3">
-                    <Button onClick={handleSaveEdit} size="sm" variant="primary">
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Button onClick={handleSaveEdit} size="sm" variant="primary" className="w-full sm:w-auto">
                       <Check className="h-4 w-4 mr-2" />
                       Save
                     </Button>
-                    <Button onClick={handleCancelEdit} size="sm" variant="ghost">
+                    <Button onClick={handleCancelEdit} size="sm" variant="ghost" className="w-full sm:w-auto">
                       <X className="h-4 w-4 mr-2" />
                       Cancel
                     </Button>
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="flex items-center gap-3 md:gap-4 min-w-0">
                     <div
-                      className="w-12 h-12 rounded-lg"
+                      className="w-10 h-10 md:w-12 md:h-12 rounded-lg flex-shrink-0"
                       style={{ backgroundColor: project.color }}
                     />
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-base md:text-lg font-semibold text-gray-900 truncate" title={project.name}>
                         {project.name}
                       </h3>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-xs md:text-sm text-gray-500">
                         Created {new Date(project.created_at).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 justify-end">
                     <Button onClick={() => handleEdit(project)} size="sm" variant="ghost">
                       <Edit2 className="h-4 w-4" />
                     </Button>
-                    <Button
-                      onClick={() => handleDelete(project.id)}
-                      size="sm"
-                      variant="ghost"
-                    >
+                    <Button onClick={() => handleDelete(project.id)} size="sm" variant="ghost">
                       <Trash2 className="h-4 w-4 text-red-600" />
                     </Button>
                   </div>
@@ -285,7 +303,19 @@ export default function ProjectsPage() {
           </Button>
           
           <div className="flex items-center gap-1">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+              // Show only relevant pages on mobile (current, first, last, neighbors)
+              if (
+                totalPages > 7 &&
+                window.innerWidth < 640 &&
+                page !== 1 &&
+                page !== totalPages &&
+                Math.abs(currentPage - page) > 1
+              ) {
+                if (Math.abs(currentPage - page) === 2) return <span key={page}>...</span>;
+                return null;
+              }
+              return (
               <button
                 key={page}
                 onClick={() => setCurrentPage(page)}
@@ -297,7 +327,7 @@ export default function ProjectsPage() {
               >
                 {page}
               </button>
-            ))}
+            )})}
           </div>
 
           <Button

@@ -104,34 +104,35 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Reports</h1>
-        <Button onClick={handleExportCSV} variant="primary" disabled={filteredEntries.length === 0}>
+    <div className="container mx-auto px-4 py-4 md:py-8 max-w-4xl pb-20 md:pb-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Reports</h1>
+        <Button onClick={handleExportCSV} variant="primary" disabled={filteredEntries.length === 0} className="w-full sm:w-auto">
           <Download className="h-5 w-5 mr-2" />
           Export CSV
         </Button>
       </div>
 
       {/* Date Range Selector */}
-      <div className="bg-white rounded-xl shadow-sm border border-border p-6 mb-8">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-4 sm:space-y-0 sm:flex sm:items-center sm:gap-8">
+      <div className="bg-white rounded-xl shadow-sm border border-border p-4 md:p-6 mb-6 md:mb-8">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-gray-500" />
               <span className="font-semibold text-gray-900">Date Range</span>
             </div>
-
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex gap-1">
+            
+            <div className="flex flex-wrap items-center gap-2 md:gap-4">
+              <div className="flex p-1 bg-gray-100 rounded-lg">
                 {(["day", "week", "month"] as DateRange[]).map((range) => (
                   <Button
                     key={range}
                     onClick={() => setDateRange(range)}
-                    variant={dateRange === range ? "primary" : "secondary"}
+                    variant={dateRange === range ? "primary" : "ghost"}
                     size="sm"
+                    className="flex-1 sm:flex-none capitalize"
                   >
-                    {range.charAt(0).toUpperCase() + range.slice(1)}
+                    {range}
                   </Button>
                 ))}
               </div>
@@ -142,32 +143,32 @@ export default function ReportsPage() {
                 type="date"
                 value={selectedDate.toISOString().split("T")[0]}
                 onChange={(e) => setSelectedDate(new Date(e.target.value))}
-                className="flex h-9 w-auto rounded-lg border border-border bg-white px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="flex h-9 w-full sm:w-auto rounded-lg border border-border bg-white px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
           </div>
 
-          <div className="flex items-center justify-end">
-            <p className="text-sm bg-gray-50 text-gray-700 px-4 py-2 rounded-lg border border-gray-100">
-              <span className="font-semibold text-gray-900">Showing:</span> {start.toLocaleDateString()} - {end.toLocaleDateString()}
+          <div className="pt-2 border-t border-gray-100">
+            <p className="text-sm text-gray-600 text-center sm:text-right">
+              <span className="font-medium text-gray-900">Period:</span> {start.toLocaleDateString()} - {end.toLocaleDateString()}
             </p>
           </div>
         </div>
       </div>
 
       {/* Summary */}
-      <div className="bg-white rounded-xl shadow-sm border border-border p-6 mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Summary</h2>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-sm text-gray-500">Total Time</p>
-            <p className="text-2xl font-bold text-gray-900">
+      <div className="bg-white rounded-xl shadow-sm border border-border p-4 md:p-6 mb-6 md:mb-8">
+        <h2 className="text-lg md:text-xl font-semibold text-gray-900 mb-4">Summary</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="p-4 bg-gray-50 rounded-lg">
+            <p className="text-sm text-gray-500 mb-1">Total Time</p>
+            <p className="text-2xl md:text-3xl font-bold text-gray-900">
               {formatDurationHuman(totalDuration)}
             </p>
           </div>
-          <div>
-            <p className="text-sm text-gray-500">Total Entries</p>
-            <p className="text-2xl font-bold text-gray-900">{filteredEntries.length}</p>
+          <div className="p-4 bg-gray-50 rounded-lg">
+            <p className="text-sm text-gray-500 mb-1">Total Entries</p>
+            <p className="text-2xl md:text-3xl font-bold text-gray-900">{filteredEntries.length}</p>
           </div>
         </div>
       </div>
@@ -193,16 +194,16 @@ export default function ReportsPage() {
 
                 return (
                   <div key={id} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-1">
+                      <div className="flex items-center gap-2 md:gap-3 min-w-0">
                         <div
-                          className="w-4 h-4 rounded"
+                          className="w-3 h-3 md:w-4 md:h-4 rounded flex-shrink-0"
                           style={{ backgroundColor: data.color }}
                         />
-                        <span className="font-medium text-gray-900">{data.name}</span>
-                        <span className="text-sm text-gray-500">({data.count} entries)</span>
+                        <span className="font-medium text-gray-900 truncate">{data.name}</span>
+                        <span className="text-xs md:text-sm text-gray-500 flex-shrink-0">({data.count} entries)</span>
                       </div>
-                      <span className="font-semibold text-gray-900">
+                      <span className="font-semibold text-gray-900 ml-5 sm:ml-0">
                         {formatDurationHuman(data.duration)}
                       </span>
                     </div>

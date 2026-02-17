@@ -85,14 +85,14 @@ export const Combobox = React.forwardRef<HTMLDivElement, ComboboxProps>(
             isOpen && "ring-2 ring-primary-600 ring-offset-2"
           )}
         >
-          <div className="flex items-center gap-2 flex-1 text-left">
+          <div className="flex items-center gap-2 flex-1 text-left min-w-0">
             {selectedOption?.color && (
               <div
                 className="w-3 h-3 rounded-full flex-shrink-0"
                 style={{ backgroundColor: selectedOption.color }}
               />
             )}
-            <span className={cn(!selectedOption && "text-gray-400")}>
+            <span className={cn(!selectedOption && "text-gray-400", "truncate")} title={selectedOption?.label}>
               {selectedOption?.label || placeholder}
             </span>
           </div>
@@ -142,9 +142,9 @@ export const Combobox = React.forwardRef<HTMLDivElement, ComboboxProps>(
                         style={{ backgroundColor: option.color }}
                       />
                     )}
-                    <span className="flex-1 text-left">{option.label}</span>
+                    <span className="flex-1 text-left truncate" title={option.label}>{option.label}</span>
                     {value === option.value && (
-                      <Check className="h-4 w-4 text-primary-600" />
+                      <Check className="h-4 w-4 text-primary-600 flex-shrink-0" />
                     )}
                   </button>
                 ))
