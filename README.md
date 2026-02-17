@@ -27,7 +27,7 @@ A modern time tracking web application built with Next.js, TypeScript, Tailwind 
 - **Date Utilities**: date-fns
 
 ## Project Structure
-
+```bash
 time-tracker/
 ├── app/                    # Next.js app directory
 │   ├── layout.tsx         # Root layout with navigation
