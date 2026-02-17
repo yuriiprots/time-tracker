@@ -135,8 +135,20 @@ export default function TrackerPage() {
     }
   };
 
+  // Filter entries to show only TODAY's entries (prevent flash when coming from Reports page)
+  const todayEntries = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    return entries.filter(
+      (entry) => new Date(entry.start_time) >= today && new Date(entry.start_time) < tomorrow
+    );
+  }, [entries]);
+
   // Group entries by project
-  const groupedEntries: GroupedEntries[] = entries.reduce((acc, entry) => {
+  const groupedEntries: GroupedEntries[] = todayEntries.reduce((acc, entry) => {
     const project = projects.find((p) => p.id === entry.project_id) || null;
     const existingGroup = acc.find((g) => g.project?.id === project?.id);
 
@@ -163,10 +175,10 @@ export default function TrackerPage() {
 
   // Get unique task descriptions for autocomplete (limit to 20 most recent)
   const taskSuggestions = useMemo(() => {
-    const descriptions = entries.map((entry) => entry.description);
+    const descriptions = todayEntries.map((entry) => entry.description);
     const unique = Array.from(new Set(descriptions));
     return unique.slice(0, 20); // Limit to 20 suggestions
-  }, [entries]);
+  }, [todayEntries]);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -254,16 +266,6 @@ export default function TrackerPage() {
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-gray-900">Today</h2>
           {groupedEntries.length > 0 && (() => {
-            // Filter to only today's entries for accurate calculation
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            
-            const todayEntries = entries.filter(
-              (entry) => new Date(entry.start_time) >= today && new Date(entry.start_time) < tomorrow
-            );
-            
             const totalDuration = todayEntries.reduce((sum, entry) => sum + (entry.duration || 0), 0);
             const hours = Math.floor(totalDuration / 3600);
             const minutes = Math.floor((totalDuration % 3600) / 60);
